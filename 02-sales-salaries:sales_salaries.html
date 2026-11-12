@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дашборд «Заработные платы отдела продаж»</title>
+</head>
+<body>
+<style>
+    :root {
+        --ink:      #0f1d33;
+        --muted:    #5c6b82;
+        --line:     #d6dee8;
+        --bg:       #f4f6fa;
+        --navy:     #1e3a5f;
+        --blue-3:   #8fa9c7;
+        --alert-bg: #e3ebf4;
+    }
+
+    .dashboard {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                     Roboto, 'Helvetica Neue', Arial, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        padding: 24px;
+        border-radius: 4px;
+        max-width: 1500px;
+        border: 1px solid var(--line);
+    }
+
+    .dashboard h1 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--navy);
+        margin: 0 0 24px;
+    }
+
+    .kpis {
+        display: flex;
+        gap: 0;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .kpi {
+        background: #fff;
+        padding: 16px 20px;
+        min-width: 200px;
+        flex: 1;
+        border-right: 1px solid var(--line);
+        position: relative;
+    }
+
+    .kpi:last-child { border-right: none; }
+
+    .kpi::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--blue-3);
+    }
+
+    .kpi b {
+        display: block;
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--navy);
+        font-variant-numeric: tabular-nums;
+        margin: 4px 0 2px;
+    }
+
+    .kpi span {
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+  #    .table-wrap {
+  #   margin-top: 16px;
+  #   overflow-x: auto;
+  #   width: 100%;
+  #   max-width: 100%;
+  # }
+
+  #   .salary-pivot {
+  #       border-collapse: collapse;
+  #       font-size: 11px;
+  #       white-space: nowrap;
+  #       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  #                    Roboto, sans-serif;
+  #       width: max-content;
+  #       margin: 16px;
+  #   }
+
+  #   .salary-pivot th,
+  #   .salary-pivot td {
+  #       border: 1px solid var(--line);
+  #       padding: 6px 10px;
+  #       text-align: right;
+  #   }
+
+  #   .salary-pivot th {
+  #       background: var(--navy);
+  #       color: #fff;
+  #       font-weight: 600;
+  #       font-size: 11px;
+  #       letter-spacing: 0.03em;
+  #       text-transform: uppercase;
+  #       text-align: center;
+  #       vertical-align: middle;
+  #   }
+
+  #   .salary-pivot tbody th {
+  #       text-align: left;
+  #       background: #f7f9fc;
+  #       color: var(--navy);
+  #       font-weight: 600;
+  #       text-transform: none;
+  #   }
+
+  #   .salary-pivot tbody tr:nth-child(even) td { background: #fafbfd; }
+  #   .salary-pivot tbody tr:hover td { background: #eef3f9; }
+
+  #   .salary-pivot tbody tr:last-child th,
+  #   .salary-pivot tbody tr:last-child td {
+  #       font-weight: 700;
+  #       background: var(--alert-bg);
+  #       color: var(--navy);
+  #       border-top: 2px solid var(--navy);
+  #   }
+      /* ── Таблица ── */
+    .table-wrap {
+        overflow-x: auto;
+        max-width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: #fff;
+        margin-top: 16px;
+    }
+
+    .salary-pivot {
+        border-collapse: collapse;
+        font: 13px -apple-system, BlinkMacSystemFont, 'Segoe UI',
+              Roboto, sans-serif;
+        white-space: nowrap;
+        width: max-content;
+    }
+
+    .salary-pivot th,
+    .salary-pivot td {
+        border-bottom: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+        padding: 9px 12px;
+        text-align: right;
+        vertical-align: middle;
+    }
+
+    .salary-pivot thead th {
+        background: var(--navy);
+        color: #fff;
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        # position: sticky;
+        # top: 0;
+        text-align: center;
+    }
+
+    .salary-pivot tbody th {
+        background: #f7f9fc;
+        color: var(--navy);
+        font-weight: 600;
+        text-align: left;
+        text-transform: none;
+    }
+
+    .salary-pivot tbody tr:nth-child(even) td {
+        background: #fafbfd;
+    }
+    .salary-pivot tbody tr:hover td {
+        background: #eef3f9;
+    }
+
+    .salary-pivot tbody tr:last-child th,
+    .salary-pivot tbody tr:last-child td {
+        font-weight: 700;
+        background: var(--alert-bg);
+        color: var(--navy);
+        border-top: 2px solid var(--navy);
+    }
+
+    .drill-toggle { display: none; }
+
+    .drill-link {
+        color: var(--navy);
+        text-decoration: underline dotted;
+        text-underline-offset: 2px;
+        cursor: pointer;
+    }
+    .drill-link:hover { background: #eef3f9; }
+
+    .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    .drill-toggle:checked ~ .modal { display: flex; }
+
+    .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 29, 51, 0.55);
+        cursor: pointer;
+    }
+
+    .modal-content {
+        position: relative;
+        background: #fff;
+        border-radius: 6px;
+        padding: 24px 28px 20px;
+        max-width: 1100px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        z-index: 1;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 8px;
+        right: 14px;
+        font-size: 26px;
+        line-height: 1;
+        text-decoration: none;
+        color: var(--muted);
+        cursor: pointer;
+    }
+    .modal-close:hover { color: var(--ink); }
+
+    .modal h3 {
+        margin: 0 0 12px;
+        color: var(--navy);
+        font-size: 16px;
+        padding-right: 24px;
+    }
+
+    .drill-table {
+        border-collapse: collapse;
+        font-size: 12px;
+        width: 100%;
+    }
+    .drill-table th,
+    .drill-table td {
+        border: 1px solid var(--line);
+        padding: 6px 10px;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .drill-table th {
+        background: #f7f9fc;
+        color: var(--navy);
+        font-weight: 600;
+    }
+    .drill-table td.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+    </style><div class="dashboard"><h1>Заработные платы отдела продаж</h1>
+    <div class="kpis">
+        <div class="kpi">
+            <span>Начислено по премиям</span>
+            <b>209 880 </b>
+        </div>
+        <div class="kpi">
+            <span>Начислено по окладам</span>
+            <b>10 020 000 </b>
+        </div>
+        <div class="kpi">
+            <span>Начислено всего</span>
+            <b style="color:#2b6777;">10 229 880 </b>
+        </div>
+    </div>
+    <div class="table-wrap"><table class="dataframe salary-pivot">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Год</th>
+      <th colspan="24" halign="left">2026</th>
+      <th colspan="4" halign="left">Общий итог</th>
+    </tr>
+    <tr>
+      <th></th>
+      <th>Месяц</th>
+      <th colspan="4" halign="left">Январь</th>
+      <th colspan="4" halign="left">Февраль</th>
+      <th colspan="4" halign="left">Март</th>
+      <th colspan="4" halign="left">Апрель</th>
+      <th colspan="4" halign="left">Май</th>
+      <th colspan="4" halign="left">Июнь</th>
+      <th colspan="4" halign="left"></th>
+    </tr>
+    <tr>
+      <th></th>
+      <th>Показатель</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+      <th>Сумма продаж</th>
+      <th>Премия</th>
+      <th>Оклад</th>
+      <th>Всего начислено</th>
+    </tr>
+    <tr>
+      <th>Руководитель</th>
+      <th>Менеджер</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="4" valign="top">Ветлицкий Андрей</th>
+      <th>Берестова</th>
+      <td><label for="det-e2fadc-0" class="drill-link">145 000</label></td>
+      <td><label for="det-e2fadc-9" class="drill-link">14 500</label></td>
+      <td>95 000</td>
+      <td>109 500</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>145 000</td>
+      <td>14 500</td>
+      <td>570 000</td>
+      <td>584 500</td>
+    </tr>
+    <tr>
+      <th>Ветлицкий Андрей</th>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td><label for="det-e2fadc-26" class="drill-link">6 550</label></td>
+      <td>180 000</td>
+      <td>186 550</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>6 550</td>
+      <td>1 080 000</td>
+      <td>1 086 550</td>
+    </tr>
+    <tr>
+      <th>Рябинская</th>
+      <td><label for="det-e2fadc-1" class="drill-link">120 000</label></td>
+      <td><label for="det-e2fadc-10" class="drill-link">12 000</label></td>
+      <td>95 000</td>
+      <td>107 000</td>
+      <td><label for="det-e2fadc-18" class="drill-link">130 000</label></td>
+      <td><label for="det-e2fadc-20" class="drill-link">13 000</label></td>
+      <td>95 000</td>
+      <td>108 000</td>
+      <td><label for="det-e2fadc-22" class="drill-link">125 000</label></td>
+      <td><label for="det-e2fadc-27" class="drill-link">12 500</label></td>
+      <td>95 000</td>
+      <td>107 500</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>375 000</td>
+      <td>37 500</td>
+      <td>570 000</td>
+      <td>607 500</td>
+    </tr>
+    <tr>
+      <th>Тихорецкий</th>
+      <td><label for="det-e2fadc-2" class="drill-link">135 000</label></td>
+      <td><label for="det-e2fadc-11" class="drill-link">13 500</label></td>
+      <td>95 000</td>
+      <td>108 500</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>135 000</td>
+      <td>13 500</td>
+      <td>570 000</td>
+      <td>583 500</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">Кузнецова Анна</th>
+      <th>Зайцева</th>
+      <td><label for="det-e2fadc-3" class="drill-link">140 000</label></td>
+      <td><label for="det-e2fadc-12" class="drill-link">14 000</label></td>
+      <td>95 000</td>
+      <td>109 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td><label for="det-e2fadc-23" class="drill-link">88 000</label></td>
+      <td><label for="det-e2fadc-28" class="drill-link">8 800</label></td>
+      <td>95 000</td>
+      <td>103 800</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>228 000</td>
+      <td>22 800</td>
+      <td>570 000</td>
+      <td>592 800</td>
+    </tr>
+    <tr>
+      <th>Кузнецова Анна</th>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td><label for="det-e2fadc-29" class="drill-link">3 680</label></td>
+      <td>180 000</td>
+      <td>183 680</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>3 680</td>
+      <td>1 080 000</td>
+      <td>1 083 680</td>
+    </tr>
+    <tr>
+      <th>Морозов</th>
+      <td><label for="det-e2fadc-4" class="drill-link">140 000</label></td>
+      <td><label for="det-e2fadc-13" class="drill-link">14 000</label></td>
+      <td>95 000</td>
+      <td>109 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>140 000</td>
+      <td>14 000</td>
+      <td>570 000</td>
+      <td>584 000</td>
+    </tr>
+    <tr>
+      <th rowspan="3" valign="top">Медведев Игорь</th>
+      <th>Волкова</th>
+      <td><label for="det-e2fadc-5" class="drill-link">95 000</label></td>
+      <td><label for="det-e2fadc-14" class="drill-link">9 500</label></td>
+      <td>95 000</td>
+      <td>104 500</td>
+      <td><label for="det-e2fadc-19" class="drill-link">150 000</label></td>
+      <td><label for="det-e2fadc-21" class="drill-link">15 000</label></td>
+      <td>95 000</td>
+      <td>110 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>245 000</td>
+      <td>24 500</td>
+      <td>570 000</td>
+      <td>594 500</td>
+    </tr>
+    <tr>
+      <th>Медведев Игорь</th>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td><label for="det-e2fadc-30" class="drill-link">4 600</label></td>
+      <td>180 000</td>
+      <td>184 600</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>4 600</td>
+      <td>1 080 000</td>
+      <td>1 084 600</td>
+    </tr>
+    <tr>
+      <th>Соловьёв</th>
+      <td><label for="det-e2fadc-6" class="drill-link">110 000</label></td>
+      <td><label for="det-e2fadc-15" class="drill-link">11 000</label></td>
+      <td>95 000</td>
+      <td>106 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td><label for="det-e2fadc-24" class="drill-link">105 000</label></td>
+      <td><label for="det-e2fadc-31" class="drill-link">10 500</label></td>
+      <td>95 000</td>
+      <td>105 500</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>215 000</td>
+      <td>21 500</td>
+      <td>570 000</td>
+      <td>591 500</td>
+    </tr>
+    <tr>
+      <th rowspan="4" valign="top">Сосновец Ольга</th>
+      <th>Кленовская</th>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>570 000</td>
+      <td>570 000</td>
+    </tr>
+    <tr>
+      <th>Липовская</th>
+      <td><label for="det-e2fadc-7" class="drill-link">150 000</label></td>
+      <td><label for="det-e2fadc-16" class="drill-link">15 000</label></td>
+      <td>95 000</td>
+      <td>110 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>150 000</td>
+      <td>15 000</td>
+      <td>570 000</td>
+      <td>585 000</td>
+    </tr>
+    <tr>
+      <th>Сосновец Ольга</th>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td><label for="det-e2fadc-32" class="drill-link">4 250</label></td>
+      <td>180 000</td>
+      <td>184 250</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>180 000</td>
+      <td>180 000</td>
+      <td>—</td>
+      <td>4 250</td>
+      <td>1 080 000</td>
+      <td>1 084 250</td>
+    </tr>
+    <tr>
+      <th>Ясногоров</th>
+      <td><label for="det-e2fadc-8" class="drill-link">180 000</label></td>
+      <td><label for="det-e2fadc-17" class="drill-link">18 000</label></td>
+      <td>95 000</td>
+      <td>113 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td><label for="det-e2fadc-25" class="drill-link">95 000</label></td>
+      <td><label for="det-e2fadc-33" class="drill-link">9 500</label></td>
+      <td>95 000</td>
+      <td>104 500</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>95 000</td>
+      <td>95 000</td>
+      <td>275 000</td>
+      <td>27 500</td>
+      <td>570 000</td>
+      <td>597 500</td>
+    </tr>
+    <tr>
+      <th>Общий итог</th>
+      <th></th>
+      <td>1 215 000</td>
+      <td>121 500</td>
+      <td>1 670 000</td>
+      <td>1 791 500</td>
+      <td>280 000</td>
+      <td>28 000</td>
+      <td>1 670 000</td>
+      <td>1 698 000</td>
+      <td>413 000</td>
+      <td>60 380</td>
+      <td>1 670 000</td>
+      <td>1 730 380</td>
+      <td>—</td>
+      <td>—</td>
+      <td>1 670 000</td>
+      <td>1 670 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>1 670 000</td>
+      <td>1 670 000</td>
+      <td>—</td>
+      <td>—</td>
+      <td>1 670 000</td>
+      <td>1 670 000</td>
+      <td>1 908 000</td>
+      <td>209 880</td>
+      <td>10 020 000</td>
+      <td>10 229 880</td>
+    </tr>
+  </tbody>
+</table></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-0" class="drill-toggle"><div class="modal"><label for="det-e2fadc-0" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-0" class="modal-close">×</label><h3>Берестова · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-01-102-1</td><td>INV-01-102-1</td><td>18.01.2026</td><td class="num">145 000</td><td class="num">10%</td><td class="num">14 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-1" class="drill-toggle"><div class="modal"><label for="det-e2fadc-1" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-1" class="modal-close">×</label><h3>Рябинская · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-01-101-1</td><td>INV-01-101-1</td><td>15.01.2026</td><td class="num">120 000</td><td class="num">10%</td><td class="num">12 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-2" class="drill-toggle"><div class="modal"><label for="det-e2fadc-2" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-2" class="modal-close">×</label><h3>Тихорецкий · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-01-103-1</td><td>INV-01-103-1</td><td>22.01.2026</td><td class="num">135 000</td><td class="num">10%</td><td class="num">13 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-3" class="drill-toggle"><div class="modal"><label for="det-e2fadc-3" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-3" class="modal-close">×</label><h3>Зайцева · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-402-1</td><td>INV-01-402-1</td><td>11.01.2026</td><td class="num">80 000</td><td class="num">10%</td><td class="num">8 000</td></tr><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-402-1</td><td>INV-01-402-1</td><td>23.01.2026</td><td class="num">60 000</td><td class="num">10%</td><td class="num">6 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-4" class="drill-toggle"><div class="modal"><label for="det-e2fadc-4" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-4" class="modal-close">×</label><h3>Морозов · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-01-401-1</td><td>INV-01-401-1</td><td>25.01.2026</td><td class="num">140 000</td><td class="num">10%</td><td class="num">14 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-5" class="drill-toggle"><div class="modal"><label for="det-e2fadc-5" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-5" class="modal-close">×</label><h3>Волкова · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-01-302-1</td><td>INV-01-302-1</td><td>20.01.2026</td><td class="num">95 000</td><td class="num">10%</td><td class="num">9 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-6" class="drill-toggle"><div class="modal"><label for="det-e2fadc-6" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-6" class="modal-close">×</label><h3>Соловьёв · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-01-301-1</td><td>INV-01-301-1</td><td>14.01.2026</td><td class="num">110 000</td><td class="num">10%</td><td class="num">11 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-7" class="drill-toggle"><div class="modal"><label for="det-e2fadc-7" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-7" class="modal-close">×</label><h3>Липовская · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-201-1</td><td>INV-01-201-1</td><td>10.01.2026</td><td class="num">60 000</td><td class="num">10%</td><td class="num">6 000</td></tr><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-201-1</td><td>INV-01-201-1</td><td>17.01.2026</td><td class="num">90 000</td><td class="num">10%</td><td class="num">9 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-8" class="drill-toggle"><div class="modal"><label for="det-e2fadc-8" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-8" class="modal-close">×</label><h3>Ясногоров · Январь 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-01-202-1</td><td>INV-01-202-1</td><td>12.01.2026</td><td class="num">72 000</td><td class="num">10%</td><td class="num">7 200</td></tr><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-01-202-1</td><td>INV-01-202-1</td><td>19.01.2026</td><td class="num">108 000</td><td class="num">10%</td><td class="num">10 800</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-9" class="drill-toggle"><div class="modal"><label for="det-e2fadc-9" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-9" class="modal-close">×</label><h3>Берестова · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-01-102-1</td><td>INV-01-102-1</td><td>18.01.2026</td><td class="num">145 000</td><td class="num">10%</td><td class="num">14 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-10" class="drill-toggle"><div class="modal"><label for="det-e2fadc-10" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-10" class="modal-close">×</label><h3>Рябинская · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-01-101-1</td><td>INV-01-101-1</td><td>15.01.2026</td><td class="num">120 000</td><td class="num">10%</td><td class="num">12 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-11" class="drill-toggle"><div class="modal"><label for="det-e2fadc-11" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-11" class="modal-close">×</label><h3>Тихорецкий · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-01-103-1</td><td>INV-01-103-1</td><td>22.01.2026</td><td class="num">135 000</td><td class="num">10%</td><td class="num">13 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-12" class="drill-toggle"><div class="modal"><label for="det-e2fadc-12" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-12" class="modal-close">×</label><h3>Зайцева · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-402-1</td><td>INV-01-402-1</td><td>11.01.2026</td><td class="num">80 000</td><td class="num">10%</td><td class="num">8 000</td></tr><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-402-1</td><td>INV-01-402-1</td><td>23.01.2026</td><td class="num">60 000</td><td class="num">10%</td><td class="num">6 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-13" class="drill-toggle"><div class="modal"><label for="det-e2fadc-13" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-13" class="modal-close">×</label><h3>Морозов · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-01-401-1</td><td>INV-01-401-1</td><td>25.01.2026</td><td class="num">140 000</td><td class="num">10%</td><td class="num">14 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-14" class="drill-toggle"><div class="modal"><label for="det-e2fadc-14" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-14" class="modal-close">×</label><h3>Волкова · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-01-302-1</td><td>INV-01-302-1</td><td>20.01.2026</td><td class="num">95 000</td><td class="num">10%</td><td class="num">9 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-15" class="drill-toggle"><div class="modal"><label for="det-e2fadc-15" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-15" class="modal-close">×</label><h3>Соловьёв · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-01-301-1</td><td>INV-01-301-1</td><td>14.01.2026</td><td class="num">110 000</td><td class="num">10%</td><td class="num">11 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-16" class="drill-toggle"><div class="modal"><label for="det-e2fadc-16" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-16" class="modal-close">×</label><h3>Липовская · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-201-1</td><td>INV-01-201-1</td><td>10.01.2026</td><td class="num">60 000</td><td class="num">10%</td><td class="num">6 000</td></tr><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-01-201-1</td><td>INV-01-201-1</td><td>17.01.2026</td><td class="num">90 000</td><td class="num">10%</td><td class="num">9 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-17" class="drill-toggle"><div class="modal"><label for="det-e2fadc-17" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-17" class="modal-close">×</label><h3>Ясногоров · Январь 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-01-202-1</td><td>INV-01-202-1</td><td>12.01.2026</td><td class="num">72 000</td><td class="num">10%</td><td class="num">7 200</td></tr><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-01-202-1</td><td>INV-01-202-1</td><td>19.01.2026</td><td class="num">108 000</td><td class="num">10%</td><td class="num">10 800</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-18" class="drill-toggle"><div class="modal"><label for="det-e2fadc-18" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-18" class="modal-close">×</label><h3>Рябинская · Февраль 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-02-101-1</td><td>INV-02-101-1</td><td>14.02.2026</td><td class="num">130 000</td><td class="num">10%</td><td class="num">13 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-19" class="drill-toggle"><div class="modal"><label for="det-e2fadc-19" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-19" class="modal-close">×</label><h3>Волкова · Февраль 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-02-302-1</td><td>INV-02-302-1</td><td>11.02.2026</td><td class="num">150 000</td><td class="num">10%</td><td class="num">15 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-20" class="drill-toggle"><div class="modal"><label for="det-e2fadc-20" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-20" class="modal-close">×</label><h3>Рябинская · Февраль 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-02-101-1</td><td>INV-02-101-1</td><td>14.02.2026</td><td class="num">130 000</td><td class="num">10%</td><td class="num">13 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-21" class="drill-toggle"><div class="modal"><label for="det-e2fadc-21" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-21" class="modal-close">×</label><h3>Волкова · Февраль 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:ERP</td><td>DEAL-02-302-1</td><td>INV-02-302-1</td><td>11.02.2026</td><td class="num">150 000</td><td class="num">10%</td><td class="num">15 000</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-22" class="drill-toggle"><div class="modal"><label for="det-e2fadc-22" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-22" class="modal-close">×</label><h3>Рябинская · Март 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-03-101-1</td><td>INV-03-101-1</td><td>05.03.2026</td><td class="num">125 000</td><td class="num">10%</td><td class="num">12 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-23" class="drill-toggle"><div class="modal"><label for="det-e2fadc-23" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-23" class="modal-close">×</label><h3>Зайцева · Март 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-03-402-1</td><td>INV-03-402-1</td><td>22.03.2026</td><td class="num">88 000</td><td class="num">10%</td><td class="num">8 800</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-24" class="drill-toggle"><div class="modal"><label for="det-e2fadc-24" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-24" class="modal-close">×</label><h3>Соловьёв · Март 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-03-301-1</td><td>INV-03-301-1</td><td>18.03.2026</td><td class="num">105 000</td><td class="num">10%</td><td class="num">10 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-25" class="drill-toggle"><div class="modal"><label for="det-e2fadc-25" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-25" class="modal-close">×</label><h3>Ясногоров · Март 2026 · Сумма продаж</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-03-202-1</td><td>INV-03-202-1</td><td>12.03.2026</td><td class="num">95 000</td><td class="num">10%</td><td class="num">9 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-26" class="drill-toggle"><div class="modal"><label for="det-e2fadc-26" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-26" class="modal-close">×</label><h3>Ветлицкий Андрей · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Квартальная премия</td><td>Квартальная премия</td><td>—</td><td>—</td><td>—</td><td class="num">655 000</td><td class="num">1%</td><td class="num">6 550</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-27" class="drill-toggle"><div class="modal"><label for="det-e2fadc-27" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-27" class="modal-close">×</label><h3>Рябинская · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>PIX BI</td><td>DEAL-03-101-1</td><td>INV-03-101-1</td><td>05.03.2026</td><td class="num">125 000</td><td class="num">10%</td><td class="num">12 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-28" class="drill-toggle"><div class="modal"><label for="det-e2fadc-28" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-28" class="modal-close">×</label><h3>Зайцева · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1С:УХ</td><td>DEAL-03-402-1</td><td>INV-03-402-1</td><td>22.03.2026</td><td class="num">88 000</td><td class="num">10%</td><td class="num">8 800</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-29" class="drill-toggle"><div class="modal"><label for="det-e2fadc-29" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-29" class="modal-close">×</label><h3>Кузнецова Анна · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Квартальная премия</td><td>Квартальная премия</td><td>—</td><td>—</td><td>—</td><td class="num">368 000</td><td class="num">1%</td><td class="num">3 680</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-30" class="drill-toggle"><div class="modal"><label for="det-e2fadc-30" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-30" class="modal-close">×</label><h3>Медведев Игорь · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Квартальная премия</td><td>Квартальная премия</td><td>—</td><td>—</td><td>—</td><td class="num">460 000</td><td class="num">1%</td><td class="num">4 600</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-31" class="drill-toggle"><div class="modal"><label for="det-e2fadc-31" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-31" class="modal-close">×</label><h3>Соловьёв · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>БИТ.Финанс</td><td>DEAL-03-301-1</td><td>INV-03-301-1</td><td>18.03.2026</td><td class="num">105 000</td><td class="num">10%</td><td class="num">10 500</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-32" class="drill-toggle"><div class="modal"><label for="det-e2fadc-32" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-32" class="modal-close">×</label><h3>Сосновец Ольга · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Квартальная премия</td><td>Квартальная премия</td><td>—</td><td>—</td><td>—</td><td class="num">425 000</td><td class="num">1%</td><td class="num">4 250</td></tr></tbody></table></div></div></div><div class="modal-container"><input type="checkbox" id="det-e2fadc-33" class="drill-toggle"><div class="modal"><label for="det-e2fadc-33" class="modal-backdrop"></label><div class="modal-content"><label for="det-e2fadc-33" class="modal-close">×</label><h3>Ясногоров · Март 2026 · Премия</h3><table class="drill-table"><thead><tr><th>Тип начисления</th><th>Продукт</th><th>Сделка</th><th>Счёт</th><th>Дата платежа</th><th>Сумма платежа</th><th>Процент</th><th>Сумма премии</th></tr></thead><tbody><tr><td>Премия</td><td>1C:Бухгалтерия предприятия</td><td>DEAL-03-202-1</td><td>INV-03-202-1</td><td>12.03.2026</td><td class="num">95 000</td><td class="num">10%</td><td class="num">9 500</td></tr></tbody></table></div></div></div></div>
+</body>
+</html>
