@@ -1,1 +1,433 @@
+COLORS = [
+    '#2b6777', '#8b3a3a', '#b38b36', '#3d6b45',
+    '#5c4d7d', '#a65d3b', '#4b6584'
+]
 
+
+def ru_int(v):
+    return f'{int(v):,}'.replace(',', ' ')
+
+
+def short_rub(v):
+    v = int(v)
+    return (
+        f'{v / 1_000_000:.1f}'.replace('.', ',') + ' млн ₽'
+        if v >= 1_000_000
+        else ru_int(v) + ' ₽'
+    )
+
+
+def multi_line_card(title, df):
+    width, height = 700, 340
+    left, right, top, bottom = 90, 20, 40, 85
+    plot_w, plot_h = width - left - right, height - top - bottom
+
+    max_val = df.max().max()
+    min_val = df.min().min()
+
+    if max_val == 0:
+        max_val = 1_000_000
+    if min_val == max_val:
+        min_val = 0
+
+    step_base = max_val - min_val
+    if step_base <= 50_000:
+        step = 10_000
+    elif step_base <= 200_000:
+        step = 50_000
+    elif step_base <= 500_000:
+        step = 100_000
+    elif step_base <= 1_000_000:
+        step = 200_000
+    elif step_base <= 2_000_000:
+        step = 500_000
+    elif step_base <= 5_000_000:
+        step = 1_000_000
+    else:
+        step = 5_000_000
+
+    floor_val = math.floor((min_val * 0.95) / step) * step
+    ceiling = math.ceil((max_val * 1.05) / step) * step
+    if ceiling == floor_val:
+        ceiling = floor_val + step
+
+    num_ticks = int((ceiling - floor_val) / step)
+
+    def x(m_idx):
+        return left + m_idx * plot_w / max(1, len(df) - 1)
+
+    def y(v):
+        return top + plot_h * (1 - (v - floor_val) / (ceiling - floor_val))
+
+    parts = []
+
+    for k in range(num_ticks + 1):
+        val = floor_val + k * step
+        yy = y(val)
+        parts.append(
+            f'<line x1="{left}" y1="{yy:.1f}" x2="{width - right}" y2="{yy:.1f}" '
+            f'stroke="#e4e5ed"/>'
+        )
+        parts.append(
+            f'<text x="{left - 10}" y="{yy + 4:.1f}" text-anchor="end" '
+            f'font-size="11" fill="#777">{ru_int(val)}</text>'
+        )
+
+    for m_idx, month in enumerate(df.index):
+        parts.append(
+            f'<text transform="translate({x(m_idx):.1f},{height - bottom + 16}) '
+            f'rotate(-45)" text-anchor="end" font-size="11" fill="#777">'
+            f'{html.escape(str(month))}</text>'
+        )
+
+    for i, col in enumerate(df.columns):
+        color = COLORS[i % len(COLORS)]
+        vals = df[col].values
+        pts = ' '.join(f'{x(m):.1f},{y(v):.1f}' for m, v in enumerate(vals))
+        parts.append(
+            f'<polyline points="{pts}" fill="none" stroke="{color}" '
+            f'stroke-width="2" stroke-linejoin="round"/>'
+        )
+
+        for m, v in enumerate(vals):
+            xx = x(m)
+            yy = y(v)
+            label_y = yy - 12 if yy > top + plot_h / 2 else yy + 18
+
+            parts.append(f'''
+            <g class="data-point">
+                <circle cx="{xx:.1f}" cy="{yy:.1f}" r="14" fill="transparent" style="cursor: pointer;" />
+                <circle cx="{xx:.1f}" cy="{yy:.1f}" r="4" fill="{color}" class="visible-point" />
+                <text x="{xx:.1f}" y="{label_y:.1f}" class="point-label" fill="{color}">{ru_int(v)}</text>
+            </g>
+            ''')
+
+    legend = ''.join(
+        f'<span><i style="background:{COLORS[i % len(COLORS)]}"></i>'
+        f'{html.escape(str(col))}</span>'
+        for i, col in enumerate(df.columns)
+    )
+    svg = (
+        f'<svg class="line-chart" viewBox="0 0 {width} {height}">'
+        + ''.join(parts)
+        + '</svg>'
+    )
+
+    return (
+        f'<section class="card line-card"><h2>{html.escape(title)}</h2>'
+        f'<div class="line-body">{svg}<div class="year-legend">{legend}</div></div>'
+        f'</section>'
+    )
+
+def format_pivot_html(df):
+    df_disp = df.copy().astype(object)
+    for col in df.columns:
+        df_disp[col] = df_disp[col].map(
+            lambda x: '—' if pd.isna(x) or abs(float(x)) < 0.5 else ru_int(x)
+        )
+
+    html_str = df_disp.to_html(classes='sales-pivot', border=0, na_rep='—')
+
+    if 'Дельта' in df.columns.get_level_values(1):
+
+        def color_val(x):
+          try:
+              v = float(x)
+              if v < 0:
+                  return f'<span style="color:#d64550;font-weight:600;">{ru_int(v)}</span>'
+              if v > 0:
+                  return f'<span style="color:#2e7d32;font-weight:600;">+{ru_int(v)}</span>'
+              return '—'
+          except Exception:
+              return x
+
+        for col in df.columns:
+            if col[1] == 'Дельта':
+                for val in df[col].dropna().unique():
+                    old = f'>{ru_int(val)}<'
+                    new = f'>{color_val(val)}<'
+                    html_str = html_str.replace(old, new)
+
+    return html_str
+
+
+css = """<style>
+:root {
+    --ink: #0f1d33;
+    --muted: #5c6b82;
+    --line: #d6dee8;
+    --bg: #f4f6fa;
+    --navy: #1e3a5f;
+    --blue-3: #8fa9c7;
+    --alert-bg: #e3ebf4;
+}
+
+.dashboard {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    padding: 24px;
+    border-radius: 4px;
+    max-width: 1500px;
+    border: 1px solid var(--line);
+}
+
+.dashboard h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--navy);
+    margin: 0 0 24px;
+}
+
+.subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin: 0 0 24px;
+}
+
+.kpis {
+    display: flex;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.kpi {
+    background: #fff;
+    padding: 16px 20px;
+    min-width: 200px;
+    flex: 1;
+    border-right: 1px solid var(--line);
+    position: relative;
+}
+
+.kpi:last-child {
+    border-right: none;
+}
+
+.kpi::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--blue-3);
+}
+
+.kpi.danger::before {
+    background: #d64550;
+}
+
+.kpi.success::before {
+    background: #1e3a5f;
+}
+
+.kpi b {
+    display: block;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    margin: 4px 0 2px;
+}
+
+.kpi span {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card {
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+}
+
+.card h2 {
+    background: var(--navy);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+    padding: 14px 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.line-body {
+    padding: 16px 16px 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.line-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.year-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+}
+
+.year-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.year-legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.data-point .point-label {
+    opacity: 0;
+    transition: opacity 0.2s;
+    text-anchor: middle;
+    font-weight: 700;
+    font-size: 11px;
+    pointer-events: none;
+    filter: drop-shadow(0px 0px 3px white) drop-shadow(0px 0px 3px white);
+}
+
+.data-point:hover .point-label {
+    opacity: 1;
+}
+
+.data-point:hover .visible-point {
+    r: 6;
+}
+
+.table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    margin-top: 16px;
+}
+
+.sales-pivot {
+    border-collapse: collapse;
+    font: 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    white-space: nowrap;
+    width: max-content;
+}
+
+.sales-pivot th,
+.sales-pivot td {
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    padding: 9px 12px;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.sales-pivot thead th {
+    background: var(--navy);
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    # position: sticky;
+    # top: 0;
+    text-align: center;
+}
+
+.sales-pivot tbody th {
+    background: #f7f9fc;
+    color: var(--navy);
+    font-weight: 600;
+    text-align: left;
+    text-transform: none;
+}
+
+.sales-pivot tbody tr:nth-child(even) td {
+    background: #fafbfd;
+}
+
+.sales-pivot tbody tr:hover td {
+    background: #eef3f9;
+}
+
+.sales-pivot tbody tr:last-child th,
+.sales-pivot tbody tr:last-child td {
+    font-weight: 700;
+    background: var(--alert-bg);
+    color: var(--navy);
+    border-top: 2px solid var(--navy);
+}
+
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>"""
+
+
+kpi_html = f'''
+<div class="kpis">
+    <div class="kpi"><span>План</span><b>{ru_int(total_plan)}</b></div>
+    <div class="kpi"><span>Факт</span><b>{ru_int(total_fact)}</b></div>
+    <div class="kpi {'danger' if delta < 0 else 'success'}">
+        <span>Дельта</span>
+        <b style="color: {'#d64550' if delta < 0 else '#1e3a5f'}">
+            {'+' if delta > 0 else ''}{ru_int(delta)}
+        </b>
+    </div>
+    <div class="kpi"><span>Исполнение плана, %</span><b>{completion:.1f}%</b></div>
+</div>'''
+
+
+charts_html = f'''
+<div class="grid">
+    {multi_line_card('Отклонение от плана по месяцам и руководителям', head_chart_data)}
+    {multi_line_card('Отклонение от плана по месяцам и менеджерам', manager_chart_data)}
+</div>'''
+
+
+dashboard_html = f'''
+<div class="dashboard">
+    <h1>План-фактный анализ продаж</h1>
+    {kpi_html}
+    {charts_html}
+    <div class="table-wrap">
+        {format_pivot_html(sales_pivot)}
+    </div>
+</div>
+'''
+
+
+display(HTML(css + dashboard_html))
