@@ -1,6 +1,6 @@
 # Дашборд «План-фактный анализ продаж»
 
-[Открыть дашборд](sales_plan_fact.html) · [Посмотреть ноутбук](sales_plan_fact.ipynb)
+[Открыть дашборд](03-sales-plan-fact/sales_plan_fact.html) · [Посмотреть ноутбук](sales_plan_fact.ipynb)
 
 ## Проблема бизнес-заказчика
 
